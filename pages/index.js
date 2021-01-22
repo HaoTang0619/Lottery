@@ -1,65 +1,102 @@
-import Head from 'next/head'
-import styles from '../styles/Home.module.css'
+import { useEffect, useState } from "react";
+import axios from "axios";
+import { Grid } from "@material-ui/core";
+import Result from "@/Result";
+import SettingField from "@/SettingField";
+import Timer from "@/Timer";
+import UsersField from "@/UsersField";
+import useCounter from "hooks/useCounter";
+import { connectToDatabase } from "util/mongodb";
+import { fakeUsers } from "util/fakeData";
+import { useDispatch, useSelector } from "react-redux";
+import { selectAll, setUsers, setDue, setWinner } from "redux/allSlice";
 
-export default function Home() {
-  return (
-    <div className={styles.container}>
-      <Head>
-        <title>Create Next App</title>
-        <link rel="icon" href="/favicon.ico" />
-      </Head>
+export default function Index({
+  users: initUsers,
+  due: initDue,
+  winner: initWinner,
+}) {
+  const dispatch = useDispatch();
+  const { users, due, winner } = useSelector(selectAll);
+  useEffect(() => {
+    dispatch(setUsers(initUsers));
+    dispatch(setDue(initDue ? String(initDue) : null));
+    dispatch(setWinner(initWinner !== null ? initWinner : null));
+  }, []);
 
-      <main className={styles.main}>
-        <h1 className={styles.title}>
-          Welcome to <a href="https://nextjs.org">Next.js!</a>
-        </h1>
+  const diffSecond = () => {
+    if (initDue === null) return 0;
+    const now = new Date();
+    const diff = (new Date(initDue).getTime() - now.getTime()) / 1000;
+    return diff > 0 ? diff : 0;
+  };
+  const [count, setCount] = useCounter(diffSecond());
+  const [page, setPage] = useState(null);
 
-        <p className={styles.description}>
-          Get started by editing{' '}
-          <code className={styles.code}>pages/index.js</code>
-        </p>
+  const getRandomInt = (max) => {
+    return Math.floor(Math.random() * Math.floor(max));
+  };
+  const getWinner = () => getRandomInt(users.length);
 
-        <div className={styles.grid}>
-          <a href="https://nextjs.org/docs" className={styles.card}>
-            <h3>Documentation &rarr;</h3>
-            <p>Find in-depth information about Next.js features and API.</p>
-          </a>
+  useEffect(() => {
+    // Waiting initialization
+    if (users !== undefined && due !== undefined && winner !== undefined) {
+      if (count === 0 && due !== null && users.length > 0) {
+        if (winner === null) {
+          const newWinner = initWinner || getWinner();
+          axios.post("/api/setWinner", { winner: newWinner });
+          dispatch(setWinner(newWinner));
+        }
+        setPage("result");
+      } else setPage("index");
+    }
+  }, [count === 0, due, winner]);
 
-          <a href="https://nextjs.org/learn" className={styles.card}>
-            <h3>Learn &rarr;</h3>
-            <p>Learn about Next.js in an interactive course with quizzes!</p>
-          </a>
+  if (page) {
+    return page === "index" ? (
+      <Grid container style={{ padding: "50px 100px" }}>
+        <Grid item md={6}>
+          <SettingField count={count} setCount={setCount} />
+          <br />
+          <Timer count={count} />
+        </Grid>
+        <Grid item md={6}>
+          <UsersField />
+        </Grid>
+      </Grid>
+    ) : (
+      <Result user={users[winner]} />
+    );
+  }
+  return <></>;
+}
 
-          <a
-            href="https://github.com/vercel/next.js/tree/master/examples"
-            className={styles.card}
-          >
-            <h3>Examples &rarr;</h3>
-            <p>Discover and deploy boilerplate example Next.js projects.</p>
-          </a>
+export async function getServerSideProps() {
+  const { client, db } = await connectToDatabase();
 
-          <a
-            href="https://vercel.com/import?filter=next.js&utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"
-            className={styles.card}
-          >
-            <h3>Deploy &rarr;</h3>
-            <p>
-              Instantly deploy your Next.js site to a public URL with Vercel.
-            </p>
-          </a>
-        </div>
-      </main>
+  let users = fakeUsers;
+  let due = { 0: { due: null } };
+  let winner = { 0: { winner: null } };
+  const isConnected = await client.isConnected();
 
-      <footer className={styles.footer}>
-        <a
-          href="https://vercel.com?utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Powered by{' '}
-          <img src="/vercel.svg" alt="Vercel Logo" className={styles.logo} />
-        </a>
-      </footer>
-    </div>
-  )
+  if (isConnected) {
+    users = await db.collection("user").find().toArray();
+    due = await db.collection("due").find({ name: "due" }).toArray();
+    winner = await db.collection("winner").find({ name: "winner" }).toArray();
+
+    if (!due[0]) {
+      due = [{ due: null }];
+    }
+    if (!winner[0]) {
+      winner = [{ winner: null }];
+    }
+  }
+
+  return {
+    props: {
+      users: JSON.parse(JSON.stringify(users)),
+      due: JSON.parse(JSON.stringify(due))[0].due,
+      winner: JSON.parse(JSON.stringify(winner))[0].winner,
+    },
+  };
 }
