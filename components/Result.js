@@ -9,7 +9,7 @@ import {
 import { useDispatch } from "react-redux";
 import { setDue, setWinner } from "redux/allSlice";
 
-export default function Result({ user }) {
+export default function Result({ idx, user }) {
   const dispatch = useDispatch();
   const src = ["/boy.png", "/boy2.png", "/girl.png", "/girl2.png"];
   const color = ["turquoise", "deeppink"];
@@ -23,7 +23,7 @@ export default function Result({ user }) {
 
   return user ? (
     <>
-      <Card style={{ margin: "100px auto", minWidth: "500px", width: "60%" }}>
+      <Card style={{ margin: "50px auto", minWidth: "500px", width: "60%" }}>
         <CardHeader title="抽獎結果" style={{ textAlign: "center" }} />
         <div
           style={{
@@ -41,7 +41,7 @@ export default function Result({ user }) {
           />
         </div>
         <CardContent style={{ fontSize: "1.8em", textAlign: "center" }}>
-          {user.name}
+          {idx + 1}. {user.name}
           <Button
             color="primary"
             onClick={handleReset}
@@ -50,6 +50,8 @@ export default function Result({ user }) {
           >
             重新抽獎
           </Button>
+          <hr />
+          <span style={{ fontSize: "0.7em" }}>請按下重新抽獎以返回主頁面</span>
         </CardContent>
       </Card>
     </>

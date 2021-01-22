@@ -55,17 +55,26 @@ export default function Index({
   if (page) {
     return page === "index" ? (
       <Grid container style={{ padding: "50px 100px" }}>
-        <Grid item md={6}>
+        <Grid item md={6} style={{ paddingRight: "30px" }}>
           <SettingField count={count} setCount={setCount} />
           <br />
           <Timer count={count} />
+          <hr />
+          若希望倒數時間、參與者名單在每次重新整理後保存（於DB），請連接網路
+          <hr />
+          設定後，按下重設可以重新設定時間 / 歸零（若輸入為空或為 0）
+          <hr />
+          若以重設的方法將時間歸零，不會觸發抽獎（必須以倒數歸零的方式觸發）
+          <hr />
+          倒數時間最多限制為99分鐘
+          <hr />
         </Grid>
         <Grid item md={6}>
           <UsersField />
         </Grid>
       </Grid>
     ) : (
-      <Result user={users[winner]} />
+      <Result idx={winner} user={users[winner]} />
     );
   }
   return <></>;
